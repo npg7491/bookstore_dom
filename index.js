@@ -44,9 +44,6 @@ function createBookCard(book) {
         </div>
     `;
 
-    // Note: The delete button is created here, but its functionality
-    // (i.e., making a DELETE request) will be added in a future step.
-
     return bookCard; // Return the created HTML element
 }
 
@@ -161,6 +158,50 @@ async function handleBookFormSubmit(event) {
 }
 
 
+// --- New Function: Handle Book Deletion (DELETE Request) ---
+// This asynchronous function will send a DELETE request to the API
+// and then remove the book's card from the DOM if successful.
+async function deleteBook(bookId, bookCardElement) {
+    try {
+        // Construct the DELETE URL with the specific book ID
+        const deleteURL = `${API_URL}/${bookId}`;
+
+        const response = await fetch(deleteURL, {
+            method: 'DELETE', // Specify the HTTP method as DELETE
+            // No headers or body typically needed for a simple DELETE by ID
+        });
+
+        if (!response.ok) {
+            // If the server response indicates an error
+            // The API might return an error message, try to parse it.
+            let errorMessage = `HTTP error! Status: ${response.status}.`;
+            try {
+                const errorData = await response.json();
+                if (errorData.message) {
+                    errorMessage += ` Message: ${errorData.message}`;
+                }
+            } catch (parseError) {
+                // Ignore if response body isn't JSON
+            }
+            throw new Error(errorMessage);
+        }
+
+        // If deletion was successful, remove the book card from the DOM
+        bookCardElement.remove();
+        console.log(`Book with ID ${bookId} deleted successfully.`);
+
+        // Check if booksContainer is empty after deletion and display "no books" message
+        if (booksContainer.children.length === 0) { // Simplified condition
+            booksContainer.innerHTML = '<p class="text-gray-600 text-center col-span-full">No books found. Add one!</p>';
+        }
+
+    } catch (error) {
+        console.error(`Error deleting book with ID ${bookId}:`, error);
+        alert(`Failed to delete book: ${error.message}. Please try again.`);
+    }
+}
+
+
 // --- Event Listeners ---
 // Ensures that JavaScript code runs only after the entire HTML document
 // (DOM) has been loaded and parsed.
@@ -168,3 +209,25 @@ document.addEventListener('DOMContentLoaded', fetchAndDisplayBooks);
 
 // Add event listener for the book submission form
 bookForm.addEventListener('submit', handleBookFormSubmit);
+
+// Event listener for delete buttons using Event Delegation
+// Instead of adding a listener to each button, we add one to the parent container.
+// This is more efficient, especially when books are added/removed dynamically.
+booksContainer.addEventListener('click', (event) => {
+    // Check if the clicked element (or one of its ancestors) has the 'delete-book-btn' class
+    // and is inside a book card (which has a data-book-id).
+    const deleteButton = event.target.closest('.delete-book-btn');
+
+    if (deleteButton) {
+        // Find the closest parent element that represents the whole book card
+        const bookCard = deleteButton.closest('[data-book-id]');
+
+        if (bookCard) {
+            const bookId = bookCard.dataset.bookId;
+            // Confirm with the user before deleting
+            if (confirm(`Are you sure you want to delete "${bookCard.querySelector('h3').textContent}"?`)) {
+                deleteBook(bookId, bookCard); // Call the delete function
+            }
+        }
+    }
+});
