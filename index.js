@@ -1,15 +1,12 @@
 // index.js
 
 // --- Configuration ---
-// API Endpoint for books. This is where we'll make our GET/POST/DELETE requests.
 const API_URL = 'https://bookstore-api-six.vercel.app/api/books';
+const LOCAL_STORAGE_KEY = 'cachedBooks'; // Define a key for localStorage
 
 // --- DOM Element References ---
-// Get references to the HTML elements we'll interact with.
 const booksContainer = document.getElementById('books-container');
 const loadingMessage = document.getElementById('loading-message');
-
-// References to form elements
 const bookForm = document.getElementById('book-form');
 const titleInput = document.getElementById('title');
 const authorInput = document.getElementById('author');
@@ -18,18 +15,11 @@ const genreInput = document.getElementById('genre');
 
 
 // --- Helper Function: Create a single book card HTML element ---
-// This function takes a book object as input and returns an HTML div element
-// representing that book, styled with Tailwind CSS classes.
 function createBookCard(book) {
     const bookCard = document.createElement('div');
-    // Apply Tailwind CSS classes for styling the card
     bookCard.className = 'bg-gray-50 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col justify-between';
-    
-    // Store the unique book ID directly on the HTML element.
-    // This is crucial for later steps when we implement deleting a book.
-    bookCard.dataset.bookId = book.id; // Using dataset is a clean way to store custom data
+    bookCard.dataset.bookId = book.id; 
 
-    // Populate the card's inner HTML using a template literal for readability
     bookCard.innerHTML = `
         <div>
             <h3 class="text-lg font-bold text-gray-800 mb-1">${book.title}</h3>
@@ -43,113 +33,127 @@ function createBookCard(book) {
             </button>
         </div>
     `;
+    return bookCard;
+}
 
-    return bookCard; // Return the created HTML element
+
+// --- Function to Render Books to the DOM ---
+// Extracted rendering logic into a separate function for reusability
+function renderBooks(booksToRender) {
+    booksContainer.innerHTML = ''; // Clear existing books
+    if (booksToRender.length === 0) {
+        booksContainer.innerHTML = '<p class="text-gray-600 text-center col-span-full">No books found. Add one!</p>';
+    } else {
+        booksToRender.forEach(book => {
+            const bookCard = createBookCard(book);
+            booksContainer.appendChild(bookCard);
+        });
+    }
 }
 
 
 // --- Main Function: Fetch and Display Books ---
-// This asynchronous function will handle the entire process:
-// 1. Showing a loading message.
-// 2. Making the GET request to the API.
-// 3. Parsing the response.
-// 4. Hiding the loading message.
-// 5. Creating and appending book cards to the DOM.
-// 6. Handling potential errors.
 async function fetchAndDisplayBooks() {
-    // Step 1: Show loading message and clear previous content
-    loadingMessage.classList.remove('hidden'); // Make sure the loading message is visible
-    booksContainer.innerHTML = ''; // Clear out any existing content or old book cards
+    // 1. Try to load from localStorage first
+    const cachedBooksJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+    let cachedBooks = [];
 
+    if (cachedBooksJSON) {
+        try {
+            cachedBooks = JSON.parse(cachedBooksJSON);
+            renderBooks(cachedBooks); // Display cached books immediately
+            console.log('Books loaded from localStorage.');
+            loadingMessage.classList.add('hidden'); // Hide loading message as content is shown
+        } catch (e) {
+            console.error('Error parsing cached books from localStorage:', e);
+            localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted cache
+        }
+    } else {
+        // If no cache, show loading message
+        loadingMessage.classList.remove('hidden');
+        booksContainer.innerHTML = ''; // Ensure container is empty before loading
+    }
+
+    // 2. Always fetch fresh data from the API in the background
     try {
-        // Step 2: Make the GET request using fetch()
         const response = await fetch(API_URL);
-
-        // Step 3: Check if the response was successful (status code 200-299)
         if (!response.ok) {
-            // If not successful, throw an error with the status code
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const freshBooks = await response.json();
 
-        // Step 4: Parse the JSON response body into a JavaScript array of book objects
-        const books = await response.json();
+        // 3. Compare and update if fresh data is different or if no cache was initially loaded
+        // Simple comparison: check length and if any book ID is different.
+        // For a more robust comparison, you'd deep compare arrays.
+        const areBooksDifferent = freshBooks.length !== cachedBooks.length ||
+                                  freshBooks.some((book, index) => cachedBooks[index] && book.id !== cachedBooks[index].id);
 
-        // Step 5: Hide loading message once data is received
-        loadingMessage.classList.add('hidden'); // Hide the loading message
-
-        // Step 6: Display the books or a "no books" message
-        if (books.length === 0) {
-            // If no books are returned, display a friendly message
-            booksContainer.innerHTML = '<p class="text-gray-600 text-center col-span-full">No books found. Add one!</p>';
+        if (areBooksDifferent || !cachedBooksJSON) { // If books are different or no cache was loaded
+            renderBooks(freshBooks); // Re-render with fresh data
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(freshBooks)); // Update localStorage
+            console.log('Books updated from API and localStorage refreshed.');
         } else {
-            // Loop through each book object in the array
-            books.forEach(book => {
-                // Create an HTML card for the current book
-                const bookCard = createBookCard(book);
-                // Append the created card to the books container in the HTML
-                booksContainer.appendChild(bookCard);
-            });
+            console.log('Books from API are identical to cached books. No re-render needed.');
         }
 
+        loadingMessage.classList.add('hidden'); // Ensure loading message is hidden after API call completes
+
     } catch (error) {
-        // Step 7: Handle any errors that occurred during the fetch operation
-        console.error("Error fetching books:", error);
-        loadingMessage.classList.add('hidden'); // Hide loading message even on error
-        booksContainer.innerHTML = `<p class="text-red-500 text-center col-span-full">Failed to load books. Please try again later. (${error.message})</p>`;
+        console.error("Error fetching books from API:", error);
+        loadingMessage.classList.add('hidden'); // Hide loading message even on API error
+
+        // If API call fails AND there was no valid cache, show an error message
+        if (!cachedBooksJSON || cachedBooks.length === 0) {
+            booksContainer.innerHTML = `<p class="text-red-500 text-center col-span-full">Failed to load books. Please try again later. (${error.message})</p>`;
+        }
+        // If API call fails but cached books were displayed, they remain visible.
     }
 }
 
 
 // --- Function: Handle Book Form Submission (POST Request) ---
-// This asynchronous function handles the form submission for adding a new book.
 async function handleBookFormSubmit(event) {
-    event.preventDefault(); // Prevent the default form submission (which would refresh the page)
+    event.preventDefault();
 
-    // Get values from the input fields, trimming whitespace
     const title = titleInput.value.trim();
     const author = authorInput.value.trim();
-    const year = parseInt(yearInput.value, 10); // Convert year to an integer
+    const year = parseInt(yearInput.value, 10);
     const genre = genreInput.value.trim();
 
-    // Basic validation: ensure required fields are not empty or invalid
     if (!title || !author || isNaN(year) || year === null) {
         alert('Please fill in all required fields (Title, Author, and a valid Publication Year).');
-        return; // Stop the function if validation fails
+        return;
     }
 
-    // Create the new book object using ES6 shorthand for properties
     const newBook = {
         title,
         author,
         year,
-        genre: genre || 'Unknown' // Use 'Unknown' if genre is left empty
+        genre: genre || 'Unknown'
     };
 
     try {
-        // Make the POST request to the API
         const response = await fetch(API_URL, {
-            method: 'POST', // Specify the HTTP method
+            method: 'POST',
             headers: {
-                'Content-Type': 'application/json', // Inform the server we're sending JSON
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify(newBook), // Convert the JavaScript object to a JSON string
+            body: JSON.stringify(newBook),
         });
 
         if (!response.ok) {
-            // If the server response indicates an error
-            const errorData = await response.json(); // Try to parse error message from body
+            const errorData = await response.json();
             throw new Error(`HTTP error! Status: ${response.status}. Message: ${errorData.message || 'Unknown error.'}`);
         }
 
-        const addedBook = await response.json(); // The API usually returns the newly created item
+        const addedBook = await response.json();
         console.log('Book added successfully:', addedBook);
 
         // After successfully adding a book, refresh the displayed list
-        // by re-fetching all books from the API.
+        // This will also update the localStorage cache via fetchAndDisplayBooks
         await fetchAndDisplayBooks();
 
-        // Clear the form fields for the next entry
-        bookForm.reset(); // This is a convenient built-in method to clear form inputs
+        bookForm.reset();
 
     } catch (error) {
         console.error("Error adding book:", error);
@@ -158,22 +162,16 @@ async function handleBookFormSubmit(event) {
 }
 
 
-// --- New Function: Handle Book Deletion (DELETE Request) ---
-// This asynchronous function will send a DELETE request to the API
-// and then remove the book's card from the DOM if successful.
+// --- Function: Handle Book Deletion (DELETE Request) ---
 async function deleteBook(bookId, bookCardElement) {
     try {
-        // Construct the DELETE URL with the specific book ID
         const deleteURL = `${API_URL}/${bookId}`;
 
         const response = await fetch(deleteURL, {
-            method: 'DELETE', // Specify the HTTP method as DELETE
-            // No headers or body typically needed for a simple DELETE by ID
+            method: 'DELETE',
         });
 
         if (!response.ok) {
-            // If the server response indicates an error
-            // The API might return an error message, try to parse it.
             let errorMessage = `HTTP error! Status: ${response.status}.`;
             try {
                 const errorData = await response.json();
@@ -190,8 +188,17 @@ async function deleteBook(bookId, bookCardElement) {
         bookCardElement.remove();
         console.log(`Book with ID ${bookId} deleted successfully.`);
 
+        // Update localStorage after deletion
+        const currentBooksJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (currentBooksJSON) {
+            let currentBooks = JSON.parse(currentBooksJSON);
+            currentBooks = currentBooks.filter(book => book.id !== bookId);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(currentBooks));
+            console.log('LocalStorage updated after deletion.');
+        }
+
         // Check if booksContainer is empty after deletion and display "no books" message
-        if (booksContainer.children.length === 0) { // Simplified condition
+        if (booksContainer.children.length === 0) {
             booksContainer.innerHTML = '<p class="text-gray-600 text-center col-span-full">No books found. Add one!</p>';
         }
 
@@ -203,30 +210,19 @@ async function deleteBook(bookId, bookCardElement) {
 
 
 // --- Event Listeners ---
-// Ensures that JavaScript code runs only after the entire HTML document
-// (DOM) has been loaded and parsed.
 document.addEventListener('DOMContentLoaded', fetchAndDisplayBooks);
-
-// Add event listener for the book submission form
 bookForm.addEventListener('submit', handleBookFormSubmit);
 
-// Event listener for delete buttons using Event Delegation
-// Instead of adding a listener to each button, we add one to the parent container.
-// This is more efficient, especially when books are added/removed dynamically.
 booksContainer.addEventListener('click', (event) => {
-    // Check if the clicked element (or one of its ancestors) has the 'delete-book-btn' class
-    // and is inside a book card (which has a data-book-id).
     const deleteButton = event.target.closest('.delete-book-btn');
 
     if (deleteButton) {
-        // Find the closest parent element that represents the whole book card
         const bookCard = deleteButton.closest('[data-book-id]');
 
         if (bookCard) {
             const bookId = bookCard.dataset.bookId;
-            // Confirm with the user before deleting
             if (confirm(`Are you sure you want to delete "${bookCard.querySelector('h3').textContent}"?`)) {
-                deleteBook(bookId, bookCard); // Call the delete function
+                deleteBook(bookId, bookCard);
             }
         }
     }
