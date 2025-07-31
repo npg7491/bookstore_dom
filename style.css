@@ -1,0 +1,8 @@
+::-webkit-scrollbar-thumb {
+    background: #4a5568; /* bg-gray-700 */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6b46c1; /* bg-purple-700 */
+}
