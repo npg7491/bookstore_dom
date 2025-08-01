@@ -3,27 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ninoska's Book Store</title>
-    <!-- Link to your custom CSS file (if any, though Tailwind handles most styling) -->
+    <title>My Awesome Book Store</title>
+    <!-- Link to your custom CSS file (crucial for custom animations) -->
     <link rel="stylesheet" href="style.css">
-    <!-- Link to Tailwind CSS CDN - essential for all the styling classes -->
+    <!-- Link to Tailwind CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <!-- Optional: Link to Google Fonts if a specific font like 'Inter' is desired -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Optional: Link to Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Apply Inter font family globally if loaded */
         body {
             font-family: 'Inter', sans-serif;
         }
     </style>
 </head>
 <body class="bg-gray-900 font-sans text-gray-100">
-    <!-- Header Section -->
-    <header class="bg-gradient-to-r from-purple-700 to-indigo-800 text-white p-6 shadow-xl">
-        <h1 class="text-4xl font-extrabold text-center tracking-wide">Borrow A Book</h1>
+    <!-- Header Section - UPDATED STYLING AND IDs -->
+    <header id="mainHeader" class="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white p-6 shadow-2xl
+                                    transition-all duration-300 ease-in-out cursor-pointer">
+        <h1 id="headerTitle" class="text-4xl md:text-5xl font-extrabold text-center tracking-wide drop-shadow-lg
+                                   transition-all duration-300 ease-in-out /* For background transition */
+                                   hover:animate-text-glow /* Custom animation from style.css */">
+            The Grand Digital Library
+        </h1>
     </header>
 
-    <!-- Main Content Area -->
+    <!-- Main Content Area (rest of your existing code) -->
     <main class="container mx-auto p-6">
         <!-- Section for Adding a New Book -->
         <section id="add-book" class="bg-gray-800 p-8 rounded-xl shadow-lg mb-10 border border-gray-700">

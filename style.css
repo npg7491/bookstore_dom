@@ -1,3 +1,37 @@
+/* style.css */
+
+/* * This file is included to meet project requirements.
+ * Most styling is handled directly in index.html using Tailwind CSS utility classes.
+ * You can add custom CSS rules here if needed, for example:
+ * - Global resets not covered by Tailwind's base styles.
+ * - Very specific, complex styles that are difficult to achieve with Tailwind classes alone.
+ * - Overrides for Tailwind's default styles (though not recommended without good reason).
+ */
+
+/* Custom Keyframe Animation for Text Glow */
+@keyframes text-glow {
+    0%, 100% {
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.5), 0 0 10px rgba(129, 140, 248, 0.7); /* subtle white/indigo glow */
+    }
+    50% {
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(167, 139, 250, 0.9); /* brighter white/purple glow */
+    }
+}
+
+/* Apply the custom animation */
+.animate-text-glow {
+    animation: text-glow 1.5s infinite alternate ease-in-out;
+}
+
+/* Example: A very subtle custom scrollbar (optional) */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #2d3748; /* bg-gray-800 */
+}
+
 ::-webkit-scrollbar-thumb {
     background: #4a5568; /* bg-gray-700 */
     border-radius: 4px;
@@ -6,3 +40,4 @@
 ::-webkit-scrollbar-thumb:hover {
     background: #6b46c1; /* bg-purple-700 */
 }
+/* No extra * here */
